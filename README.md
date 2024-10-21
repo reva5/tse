@@ -1,5 +1,5 @@
 # CS50 TSE
-## Student name (GitHub username)
+## Rodrigo Vega Ayllon (reva5)
 
 The assignment and Specs are in a [public repo](https://github.com/CS50DartmouthFA24/labs/tse).
 Do not clone that repo; view it on GitHub.
