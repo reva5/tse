@@ -1,4 +1,4 @@
-### CS50 TSE Indexer
+# CS50 TSE Indexer
 
 ## Implementation Spec
 In this document we reference the Requirements Specification and Design Specification and focus on the implementation-specific decisions. The knowledge unit noted that an implementation spec may include many topics; not all are relevant to the TSE or the Crawler. Here we focus on the core subset:
@@ -17,15 +17,15 @@ When building an index from a page directory, the size of the hashtable (slots) 
 ## Control flow
 The Indexer is implemented in one file `indexer.c`, with four functions.
 
-# main
+### main
 The `main` function validates correct usage of program (e.g. correct number of command-line arguments), calls `parseArgs`, builds an index from a given webpage directory, saves that index to a given file, then deletes that index from memory. Finally it exits 0.
 
-# parseArgs
+### parseArgs
 Given arguments from the command line, extract them into this function's parameters; return only if successful.
 - for `pageDirectory`, validate that it is crawler-produced (it has a `.crawler` writable file and at least a `1` file)
 - for `indexFilename`, check if it can be created/opened in write mode
 
-# indexBuild
+### indexBuild
 Build an in-memory index from a given webpage directory. Pseudocode:
 ```
 creates a new 'index' object
@@ -35,7 +35,7 @@ if successful,
   passes the webpage and docID to indexPage
 ```
 
-# indexPage
+### indexPage
 Scan a webpage file to add its words to the index. Pseudocode:
 ```
 step through each word of the webpage,
@@ -48,11 +48,11 @@ step through each word of the webpage,
 
 The index tester is implemented in one file `indextest.c`, with one function.
 
-# main
+### main
 The `main` function validates correct usage of program (e.g. correct number of command-line arguments), parses arguments by checking that `oldIndexFilename` is readable and that `newIndexFilename` is writable, loads index in memory from `oldIndexFilename`, saves it to `newIndexFilename`, then deletes the index in memory. Finally it returns 0.
 
 ## Other modules
-# pagedir
+### pagedir
 We extend the `pagedir` module to add functionality for validating that a webpage directory is crawler-produced and for loading a crawler-produced webpage file into a webpage struct. We thus add two new functions `pagedir_validate` and `pagedir_load`.
 
 Pseudocode for `pagedir_validate`:
@@ -73,7 +73,7 @@ close webpage file
 return webpage struct built from URL, depth, HTML variables
 ```
 
-# index
+### index
 To represent an index in memory, we write a module defining an 'index\_t' data structure, along with various functions capturing all necessary functionality. This index data structure shall have only one field for a 'words' hashtable, that maps from words to 'counters' structures, which in turn map from document IDs to the number of occurrences of that word in that document. The functions to include are as follows: `index_new`, `index_add`, `index_set`, `index_load`, `index_save`, `index_delete`.
 
 Pseudocode for `index_new`:
@@ -128,7 +128,7 @@ delete words hashtable
 free memory for index
 ```
 
-# word
+### word
 We write this module to provide functionality for normalizing a word (necessary for `indexPage`). We define the function `word_normalizeWord`.
 
 Pseudocode for `word_normalizeWord`:
@@ -137,11 +137,11 @@ loop through all word characters until we hit NULL char,
     convert character to lowercase (in place)
 ```
 
-# libcs50
+### libcs50
 We leverage the modules of libcs50, most notably `counters` and `hashtable` in the definition of our index\_t structure (as already mentioned). We also make use of the `webpage` module in e.g. building a webpage\_t structure out of a webpage file in `pagedir_load`. Module `file` is used for getting the number of lines and reading lines in `index_load`. Finally, module `mem` is used for various calls to `mem_asset` that make sure memory was correctly allocated.
 
 ## Function prototypes
-# indexer
+### indexer
 Detailed descriptions of each function's interface is provided as a paragraph comment prior to each function's implementation in indexer.c and is not repeated here.
 ```c
 int main(const int argc, char* argv[]);
@@ -150,14 +150,14 @@ static index_t* indexBuild(char* pageDirectory);
 static void indexPage(index_t* index, webpage_t* page, int docID);
 ```
 
-# pagedir 
+### pagedir 
 Detailed descriptions of each function's interface is provided as a paragraph comment prior to each function's implementation in pagedir.h and is not repeated here.
 ```c
 bool pagedir_validate(const char* pageDirectory);
 webpage_t* pagedir_load(const char* pageDirectory, const int docID);
 ```
 
-# index
+### index
 Detailed descriptions of each function's interface is provided as a paragraph comment prior to each function's implementation in index.h and is not repeated here.
 ```c
 index_t* index_new(int numSlots);
@@ -168,13 +168,13 @@ index_t* index_load(char* indexFilename);
 void index_delete(index_t* index);
 ```
 
-# word
+### word
 Detailed descriptions of each function's interface is provided as a paragraph comment prior to each function's implementation in word.h and is not repeated here.
 ```c
 void word_normalizeWord(char* word);
 ```
 
-# indextest
+### indextest
 Detailed descriptions of each function's interface is provided as a paragraph comment prior to each function's implementation in indextest.c and is not repeated here.
 ```c
 int main(const int argc, char* argv[]);
@@ -193,10 +193,10 @@ That said, certain errors are caught and handled internally: for example, pagedi
 ## Testing plan
 Here is an implementation-specific testing plan.
 
-# Unit testing
+### Unit testing
 There are four units (indexer, pagedir, index, word). For the index module, a program 'indextest' will serve as a unit test. This program 'indextest', compiled from 'indextest.c', reads an index file into an index data structure using `index_load`, then writes the index out to a new index file using `index_save`. The other units are relatively tiny; they could be tested using a small C 'driver' to invoke their functions with various arguments, but it is likely sufficient to observe their behavior during the system test.
 
-# Integration/system testing
+### Integration/system testing
 We write a script `testing.sh` that invokes the indexer several times, with a variety of command-line arguments.
 
 First, a sequence of invocations with erroneous arguments, including 1. no arguments 2. one argument 3. three or more arguments 4. unexistent pageDirectory 5. existent, non-crawler-produced pageDirectory 6. existent, crawler-initialized but not produced pageDirectory 7. unexistent pathname indexFilename 8. read-only directory indexFilename 9. unwritable file indexFilename.
