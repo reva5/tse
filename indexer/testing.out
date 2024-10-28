@@ -1,0 +1,166 @@
+bash -v testing.sh
+module () {  local _mlredir=1;
+ if [ -n "${MODULES_REDIRECT_OUTPUT+x}" ]; then
+ if [ "$MODULES_REDIRECT_OUTPUT" = '0' ]; then
+ _mlredir=0;
+ else
+ if [ "$MODULES_REDIRECT_OUTPUT" = '1' ]; then
+ _mlredir=1;
+ fi;
+ fi;
+ fi;
+ case " $@ " in 
+ *' --no-redirect '*)
+ _mlredir=0
+ ;;
+ *' --redirect '*)
+ _mlredir=1
+ ;;
+ esac;
+ if [ $_mlredir -eq 0 ]; then
+ _module_raw "$@";
+ else
+ _module_raw "$@" 2>&1;
+ fi
+}
+ml () {  module ml "$@"
+}
+_module_raw () {  eval "$(/usr/bin/tclsh8.6 '/usr/lib/x86_64-linux-gnu/modulecmd.tcl' bash "$@")";
+ _mlstatus=$?;
+ return $_mlstatus
+}
+## Invocations with erroneous arguments
+
+# No arguments
+./indexer
+usage: ./indexer pageDirectory indexFilename
+	pageDirectory - pathname of directory produced by crawler
+	indexFilename - pathname of a file into which the index should be written
+
+# One argument
+./indexer arg1
+usage: ./indexer pageDirectory indexFilename
+	pageDirectory - pathname of directory produced by crawler
+	indexFilename - pathname of a file into which the index should be written
+
+# More than two arguments
+./indexer arg1 arg2 arg3 arg4 arg5
+usage: ./indexer pageDirectory indexFilename
+	pageDirectory - pathname of directory produced by crawler
+	indexFilename - pathname of a file into which the index should be written
+
+# Unexistent pageDirectory
+./indexer unexistent ../data/letters.index
+pageDirectory unexistent is not crawler-produced
+
+# Existent, non-crawler-produced pageDirectory
+./indexer test_dir ../data/letters.index
+pageDirectory test_dir is not crawler-produced
+
+# Existent, crawler-initialized but not produced pageDirectory
+./indexer test2_dir ../data/letters.index
+pageDirectory test2_dir is not crawler-produced
+
+# Unexistent pathname indexFilename
+./indexer ../data/letters unexistent/unexistent
+failed opening writable index file unexistent/unexistent
+
+# Read-only directory indexFilename
+./indexer ../data/letters test3_dir
+failed opening writable index file test3_dir
+
+# Unwritable file indexFilename
+./indexer ../data/letters unwritable
+failed opening writable index file unwritable
+
+
+## Run with valgrind over moderate-sized test case
+
+valgrind --leak-check=full --show-leak-kinds=all ./indexer ../data/toscrape-1 ../data/toscrape-1.index
+==1161381== Memcheck, a memory error detector
+==1161381== Copyright (C) 2002-2022, and GNU GPL'd, by Julian Seward et al.
+==1161381== Using Valgrind-3.22.0 and LibVEX; rerun with -h for copyright info
+==1161381== Command: ./indexer ../data/toscrape-1 ../data/toscrape-1.index
+==1161381== 
+==1161381== 
+==1161381== HEAP SUMMARY:
+==1161381==     in use at exit: 0 bytes in 0 blocks
+==1161381==   total heap usage: 2,335,642 allocs, 2,335,642 frees, 42,741,852,988 bytes allocated
+==1161381== 
+==1161381== All heap blocks were freed -- no leaks are possible
+==1161381== 
+==1161381== For lists of detected and suppressed errors, rerun with: -s
+==1161381== ERROR SUMMARY: 0 errors from 0 contexts (suppressed: 0 from 0)
+valgrind --leak-check=full --show-leak-kinds=all ./indextest ../data/toscrape-1.index ../data/toscrape-1-copy.index
+==1162588== Memcheck, a memory error detector
+==1162588== Copyright (C) 2002-2022, and GNU GPL'd, by Julian Seward et al.
+==1162588== Using Valgrind-3.22.0 and LibVEX; rerun with -h for copyright info
+==1162588== Command: ./indextest ../data/toscrape-1.index ../data/toscrape-1-copy.index
+==1162588== 
+==1162588== 
+==1162588== HEAP SUMMARY:
+==1162588==     in use at exit: 0 bytes in 0 blocks
+==1162588==   total heap usage: 19,088 allocs, 19,088 frees, 455,234 bytes allocated
+==1162588== 
+==1162588== All heap blocks were freed -- no leaks are possible
+==1162588== 
+==1162588== For lists of detected and suppressed errors, rerun with: -s
+==1162588== ERROR SUMMARY: 0 errors from 0 contexts (suppressed: 0 from 0)
+
+
+## Runs over directories crawler-produced by all three CS50 websites, then compare with 'shared' index
+
+# letters at depth 0
+./indexer ~/cs50-dev/shared/tse/output/letters-0 ../data/letters-0.index
+./indextest ../data/letters-0.index ../data/letters-0-copy.index
+~/cs50-dev/shared/tse/indexcmp ../data/letters-0.index ~/cs50-dev/shared/tse/output/letters-0.index
+
+# letters at depth 1
+./indexer ~/cs50-dev/shared/tse/output/letters-1 ../data/letters-1.index
+./indextest ../data/letters-1.index ../data/letters-1-copy.index
+~/cs50-dev/shared/tse/indexcmp ../data/letters-1.index ~/cs50-dev/shared/tse/output/letters-1.index
+
+# letters at depth 2
+./indexer ~/cs50-dev/shared/tse/output/letters-2 ../data/letters-2.index
+./indextest ../data/letters-2.index ../data/letters-2-copy.index
+~/cs50-dev/shared/tse/indexcmp ../data/letters-2.index ~/cs50-dev/shared/tse/output/letters-2.index
+
+# letters at depth 3
+./indexer ~/cs50-dev/shared/tse/output/letters-3 ../data/letters-3.index
+./indextest ../data/letters-3.index ../data/letters-3-copy.index
+~/cs50-dev/shared/tse/indexcmp ../data/letters-3.index ~/cs50-dev/shared/tse/output/letters-3.index
+
+# toscrape at depth 0
+./indexer ~/cs50-dev/shared/tse/output/toscrape-0 ../data/toscrape-0.index
+./indextest ../data/toscrape-0.index ../data/toscrape-0-copy.index
+~/cs50-dev/shared/tse/indexcmp ../data/toscrape-0.index ~/cs50-dev/shared/tse/output/toscrape-0.index
+
+# toscrape at depth 1
+./indexer ~/cs50-dev/shared/tse/output/toscrape-1 ../data/toscrape-1.index
+./indextest ../data/toscrape-1.index ../data/toscrape-1-copy.index
+~/cs50-dev/shared/tse/indexcmp ../data/toscrape-1.index ~/cs50-dev/shared/tse/output/toscrape-1.index
+
+# toscrape at depth 2
+./indexer ~/cs50-dev/shared/tse/output/toscrape-2 ../data/toscrape-2.index
+./indextest ../data/toscrape-2.index ../data/toscrape-2-copy.index
+~/cs50-dev/shared/tse/indexcmp ../data/toscrape-2.index ~/cs50-dev/shared/tse/output/toscrape-2.index
+
+# toscrape at depth 3
+./indexer ~/cs50-dev/shared/tse/output/toscrape-3 ../data/toscrape-3.index
+./indextest ../data/toscrape-3.index ../data/toscrape-3-copy.index
+~/cs50-dev/shared/tse/indexcmp ../data/toscrape-3.index ~/cs50-dev/shared/tse/output/toscrape-3.index
+
+# wikipedia at depth 0
+./indexer ~/cs50-dev/shared/tse/output/wikipedia-0 ../data/wikipedia-0.index
+./indextest ../data/wikipedia-0.index ../data/wikipedia-0-copy.index
+~/cs50-dev/shared/tse/indexcmp ../data/wikipedia-0.index ~/cs50-dev/shared/tse/output/wikipedia-0.index
+
+# wikipedia at depth 1
+./indexer ~/cs50-dev/shared/tse/output/wikipedia-1 ../data/wikipedia-1.index
+./indextest ../data/wikipedia-1.index ../data/wikipedia-1-copy.index
+~/cs50-dev/shared/tse/indexcmp ../data/wikipedia-1.index ~/cs50-dev/shared/tse/output/wikipedia-1.index
+
+# wikipedia at depth 2 (commented out because some files in 'shared' output are not readable)
+# ./indexer ~/cs50-dev/shared/tse/output/wikipedia-2 ../data/wikipedia-2.index
+# ./indextest ../data/wikipedia-2.index ../data/wikipedia-2-copy.index
+# ~/cs50-dev/shared/tse/indexcmp ../data/wikipedia-2.index ~/cs50-dev/shared/tse/output/wikipedia-2.index

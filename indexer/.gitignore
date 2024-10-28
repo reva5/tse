@@ -1,0 +1,9 @@
+indexer
+indextest
+*.o
+*~
+core
+test_dir/
+test2_dir/
+test3_dir
+unwritable

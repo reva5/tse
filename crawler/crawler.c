@@ -120,7 +120,7 @@ static void crawl(char* seedURL, char* pageDirectory, const int maxDepth)
   bag_insert(pagesToCrawl, webpage_new(seedURL, 0, NULL));
   
   // Crawl webpages to be crawled
-  int docID = 0;
+  int docID = 1;
   webpage_t* webpage = NULL;
   while ((webpage = bag_extract(pagesToCrawl)) != NULL) {
     // Fetch webpage HTML

@@ -33,9 +33,51 @@ bool pagedir_init(const char* pageDirectory);
  *  program crashes cleanly if:
  *    any pointer argument is NULL
  *    file to write page information to cannot be opened
- *  it is assumed that pageDirectory does not contain any files whose name is an integer (i.e. 1, 2,...)
  * 
  * Limitations:
  *  docID should be an integer of less than 6 digits; else, it gets cut off at the 5-digit mark, leading to unexpected behavior
  */
 void pagedir_save(const webpage_t* page, const char* pageDirectory, const int docID);
+
+
+/**************** pagedir_validate ****************/
+/* Validates that a given directory is crawler-produced
+ *
+ * Caller provides:
+ *  pageDirectory string representing the path of potentially crawler-produced directory
+ *
+ * We return:
+ *  true if directory is crawler-produced, false otherwise
+ *
+ * IMPORTANT:
+ *  program crashes cleanly if pageDirectory is NULL
+ * 
+ * Limitations:
+ *  a directory that is not crawler-produced might still give a false positive (if it just so happens that it has readable files
+ *  named '.crawler' and '1')
+ */
+bool pagedir_validate(const char* pageDirectory);
+
+/**************** pagedir_load ****************/
+/* Loads all page information from a file into a webpage_t struct
+ *
+ * Caller provides:
+ *  pageDirectory string representing the path of the directory where this page file is located
+ *  docID the unique document ID of the page that identifies its page file
+ *
+ * We return:
+ *  pointer to webpage_t struct containing all page information, or
+ *  NULL if page file does not exist or is not readable in directory, or if there was an error constructing webpage_t struct
+ *
+ * We assume:
+ *  all files in pageDirectory are crawler-produced
+ *
+ * IMPORTANT:
+ *  program crashes cleanly if:
+ *    any pointer argument is NULL
+ *    file containing page information cannot be opened
+ * 
+ * Limitations:
+ *  docID should be an integer of less than 6 digits; else, it gets cut off at the 5-digit mark, leading to unexpected behavior
+ */
+webpage_t* pagedir_load(const char* pageDirectory, const int docID);

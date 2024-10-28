@@ -1,19 +1,23 @@
-# Makefile for 'crawler' program
+# Makefile for 'indexer' and 'indextest' programs
 #
 # By Rodrigo Vega Ayllon - October 2024
 
 CS50 = ../libcs50
 COMMON = ../common
 
-OBJS = crawler.o
 LIBS = $(COMMON)/common.a $(CS50)/libcs50-given.a
 
 CC = gcc
 CFLAGS = -Wall -pedantic -std=c11 -ggdb
 MAKE = make
 
-crawler: $(OBJS) $(LIBS)
+all: indexer indextest
+
+indexer: indexer.o $(LIBS)
 	$(CC) $(CFLAGS) $^ -o $@	
+
+indextest: indextest.o $(LIBS)
+	$(CC) $(CFLAGS) $^ -o $@
 
 $(COMMON)/common.a:
 	$(MAKE) --directory=$(COMMON)
@@ -22,7 +26,7 @@ $(COMMON)/common.a:
 
 clean:
 	rm -f core
-	rm -f crawler *~ *.o
+	rm -f indexer indextest *~ *.o
 	$(MAKE) --directory=$(COMMON) clean
 
 test:
