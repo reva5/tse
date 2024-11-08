@@ -81,6 +81,18 @@ void index_set(index_t* index, char* word, int docID, int count)
   counters_set(IDToOccurrences, docID, count);
 }
 
+/**************** index_get ****************/
+/* see index.h for documentation */
+counters_t* index_get(index_t* index, char* word)
+{
+  if (index == NULL || word == NULL) {
+    return NULL;
+  }
+
+  // Return counter set of word
+  return hashtable_find(index->words, word);
+}
+
 /**************** index_save ****************/
 /* see index.h for documentation */
 void index_save(index_t* index, char* indexFilename)
@@ -117,7 +129,7 @@ index_t* index_load(char* indexFilename)
 
   // Get number of words in indexFile and assign number of slots based on that
   int numWords = file_numLines(indexFile);
-  index_t* index = index_new(numWords / 10);
+  index_t* index = index_new((numWords / 10) + 1);
 
   // Read word at the beginning of each line
   char* word = "";

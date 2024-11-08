@@ -4,6 +4,8 @@
  * By Rodrigo Vega Ayllon - October 2024
  */
 
+#include "../libcs50/counters.h"
+
 /***********************************************************************/
 /* index_t: struct to represent an index that maps from word to (docID, count) pairs
  */
@@ -73,6 +75,19 @@ void index_add(index_t* index, char* word, int docID);
  *   deallocate its word string after this call.  
  */
 void index_set(index_t* index, char* word, int docID, int count);
+
+/**************** index_get ****************/
+/* Get counter set corresponding to word
+ * 
+ * Caller provides:
+ *   index  pointer to valid index_t struct
+ *   word   word string
+ *
+ * We return:
+ *   NULL if index is NULL, word is NULL, or word is not in index
+ *   otherwise, pointer to counter set of word
+ */
+counters_t* index_get(index_t* index, char* word);
 
 /**************** index_save ****************/
 /* Saves all index information to a file
