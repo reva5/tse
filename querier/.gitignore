@@ -1,0 +1,5 @@
+core
+fuzzquery
+querier
+*.o
+*~
