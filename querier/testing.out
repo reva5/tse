@@ -1,0 +1,835 @@
+gcc -Wall -pedantic -std=c11 -ggdb   -c -o fuzzquery.o fuzzquery.c
+gcc -Wall -pedantic -std=c11 -ggdb fuzzquery.o ../common/common.a ../libcs50/libcs50-given.a -o fuzzquery
+bash -v testing.sh
+module () {  local _mlredir=1;
+ if [ -n "${MODULES_REDIRECT_OUTPUT+x}" ]; then
+ if [ "$MODULES_REDIRECT_OUTPUT" = '0' ]; then
+ _mlredir=0;
+ else
+ if [ "$MODULES_REDIRECT_OUTPUT" = '1' ]; then
+ _mlredir=1;
+ fi;
+ fi;
+ fi;
+ case " $@ " in 
+ *' --no-redirect '*)
+ _mlredir=0
+ ;;
+ *' --redirect '*)
+ _mlredir=1
+ ;;
+ esac;
+ if [ $_mlredir -eq 0 ]; then
+ _module_raw "$@";
+ else
+ _module_raw "$@" 2>&1;
+ fi
+}
+ml () {  module ml "$@"
+}
+_module_raw () {  eval "$(/usr/bin/tclsh8.6 '/usr/lib/x86_64-linux-gnu/modulecmd.tcl' bash "$@")";
+ _mlstatus=$?;
+ return $_mlstatus
+}
+## Invocations with erroneous arguments
+
+# No arguments
+./querier
+usage: ./querier pageDirectory indexFilename
+	pageDirectory - pathname of directory produced by the Crawler
+	indexFilename - pathname of a file produced by the Indexer
+# One argument
+./querier arg1
+usage: ./querier pageDirectory indexFilename
+	pageDirectory - pathname of directory produced by the Crawler
+	indexFilename - pathname of a file produced by the Indexer
+# More than two arguments
+./querier arg1 arg2 arg3 arg4 arg5
+usage: ./querier pageDirectory indexFilename
+	pageDirectory - pathname of directory produced by the Crawler
+	indexFilename - pathname of a file produced by the Indexer
+# Unexistent pageDirectory
+./querier unexistent ../data/letters.index
+pageDirectory unexistent is not crawler-produced
+
+# Existent, non-crawler-produced pageDirectory
+./querier test_dir ../data/letters.index
+pageDirectory test_dir is not crawler-produced
+
+# Existent, crawler-initialized but not produced pageDirectory
+./querier test2_dir ../data/letters.index
+pageDirectory test2_dir is not crawler-produced
+
+# Unexistent pathname indexFilename
+./querier ../data/letters unexistent/unexistent
+failed opening readable index file unexistent/unexistent
+
+# Write-only directory indexFilename
+./querier ../data/letters test3_dir
+failed opening readable index file test3_dir
+
+# Unreadable file indexFilename
+./querier ../data/letters unreadable
+failed opening readable index file unreadable
+
+
+## Invocations with empty query and invalid queries
+
+# Operator in front
+./querier ../data/letters ../data/letters.index < fuzzquery_files/fq-1
+Error: 'and' cannot be first.
+
+# Operator at the end
+./querier ../data/letters ../data/letters.index < fuzzquery_files/fq-2
+Error: 'or' cannot be last.
+
+# Adjacent operators
+./querier ../data/letters ../data/letters.index < fuzzquery_files/fq-3
+Error: 'or' and 'and' cannot be adjacent.
+
+# Non-alphabetic and non-whitespace character
+./querier ../data/letters ../data/letters.index < fuzzquery_files/fq-4
+Error: bad character '!' in query.
+
+# Empty query
+./querier ../data/letters ../data/letters.index < fuzzquery_files/fq-5
+
+
+## Run with valgrind over moderate-sized test case
+
+valgrind --leak-check=full --show-leak-kinds=all ./querier ../data/toscrape-1 ../data/toscrape-1.index < fuzzquery_files/fq1
+==2137516== Memcheck, a memory error detector
+==2137516== Copyright (C) 2002-2022, and GNU GPL'd, by Julian Seward et al.
+==2137516== Using Valgrind-3.22.0 and LibVEX; rerun with -h for copyright info
+==2137516== Command: ./querier ../data/toscrape-1 ../data/toscrape-1.index
+==2137516== 
+==2137516== Invalid write of size 4
+==2137516==    at 0x10B716: tokens_new (tokens.c:54)
+==2137516==    by 0x10B89F: tokens_tokenize (tokens.c:110)
+==2137516==    by 0x10B281: respondQuery (querier.c:304)
+==2137516==    by 0x10ABD3: main (querier.c:71)
+==2137516==  Address 0x4c57138 is 0 bytes after a block of size 8 alloc'd
+==2137516==    at 0x4846828: malloc (in /usr/libexec/valgrind/vgpreload_memcheck-amd64-linux.so)
+==2137516==    by 0x10B6C3: tokens_new (tokens.c:46)
+==2137516==    by 0x10B89F: tokens_tokenize (tokens.c:110)
+==2137516==    by 0x10B281: respondQuery (querier.c:304)
+==2137516==    by 0x10ABD3: main (querier.c:71)
+==2137516== 
+==2137516== Invalid read of size 4
+==2137516==    at 0x10B699: tokens_getLength (tokens.c:34)
+==2137516==    by 0x10B79F: tokens_set (tokens.c:74)
+==2137516==    by 0x10B9C2: tokens_tokenize (tokens.c:144)
+==2137516==    by 0x10B281: respondQuery (querier.c:304)
+==2137516==    by 0x10ABD3: main (querier.c:71)
+==2137516==  Address 0x4c57138 is 0 bytes after a block of size 8 alloc'd
+==2137516==    at 0x4846828: malloc (in /usr/libexec/valgrind/vgpreload_memcheck-amd64-linux.so)
+==2137516==    by 0x10B6C3: tokens_new (tokens.c:46)
+==2137516==    by 0x10B89F: tokens_tokenize (tokens.c:110)
+==2137516==    by 0x10B281: respondQuery (querier.c:304)
+==2137516==    by 0x10ABD3: main (querier.c:71)
+==2137516== 
+==2137516== Invalid read of size 4
+==2137516==    at 0x10B699: tokens_getLength (tokens.c:34)
+==2137516==    by 0x10AD85: parseTokens (querier.c:141)
+==2137516==    by 0x10B2AE: respondQuery (querier.c:313)
+==2137516==    by 0x10ABD3: main (querier.c:71)
+==2137516==  Address 0x4c57138 is 0 bytes after a block of size 8 alloc'd
+==2137516==    at 0x4846828: malloc (in /usr/libexec/valgrind/vgpreload_memcheck-amd64-linux.so)
+==2137516==    by 0x10B6C3: tokens_new (tokens.c:46)
+==2137516==    by 0x10B89F: tokens_tokenize (tokens.c:110)
+==2137516==    by 0x10B281: respondQuery (querier.c:304)
+==2137516==    by 0x10ABD3: main (querier.c:71)
+==2137516== 
+==2137516== Invalid read of size 4
+==2137516==    at 0x10B699: tokens_getLength (tokens.c:34)
+==2137516==    by 0x10B74A: tokens_get (tokens.c:63)
+==2137516==    by 0x10AD99: parseTokens (querier.c:144)
+==2137516==    by 0x10B2AE: respondQuery (querier.c:313)
+==2137516==    by 0x10ABD3: main (querier.c:71)
+==2137516==  Address 0x4c57138 is 0 bytes after a block of size 8 alloc'd
+==2137516==    at 0x4846828: malloc (in /usr/libexec/valgrind/vgpreload_memcheck-amd64-linux.so)
+==2137516==    by 0x10B6C3: tokens_new (tokens.c:46)
+==2137516==    by 0x10B89F: tokens_tokenize (tokens.c:110)
+==2137516==    by 0x10B281: respondQuery (querier.c:304)
+==2137516==    by 0x10ABD3: main (querier.c:71)
+==2137516== 
+==2137516== Invalid read of size 4
+==2137516==    at 0x10B699: tokens_getLength (tokens.c:34)
+==2137516==    by 0x10B74A: tokens_get (tokens.c:63)
+==2137516==    by 0x10AE11: parseTokens (querier.c:151)
+==2137516==    by 0x10B2AE: respondQuery (querier.c:313)
+==2137516==    by 0x10ABD3: main (querier.c:71)
+==2137516==  Address 0x4c57138 is 0 bytes after a block of size 8 alloc'd
+==2137516==    at 0x4846828: malloc (in /usr/libexec/valgrind/vgpreload_memcheck-amd64-linux.so)
+==2137516==    by 0x10B6C3: tokens_new (tokens.c:46)
+==2137516==    by 0x10B89F: tokens_tokenize (tokens.c:110)
+==2137516==    by 0x10B281: respondQuery (querier.c:304)
+==2137516==    by 0x10ABD3: main (querier.c:71)
+==2137516== 
+==2137516== Invalid read of size 4
+==2137516==    at 0x10B699: tokens_getLength (tokens.c:34)
+==2137516==    by 0x10B32C: respondQuery (querier.c:322)
+==2137516==    by 0x10ABD3: main (querier.c:71)
+==2137516==  Address 0x4c57138 is 0 bytes after a block of size 8 alloc'd
+==2137516==    at 0x4846828: malloc (in /usr/libexec/valgrind/vgpreload_memcheck-amd64-linux.so)
+==2137516==    by 0x10B6C3: tokens_new (tokens.c:46)
+==2137516==    by 0x10B89F: tokens_tokenize (tokens.c:110)
+==2137516==    by 0x10B281: respondQuery (querier.c:304)
+==2137516==    by 0x10ABD3: main (querier.c:71)
+==2137516== 
+==2137516== Invalid read of size 4
+==2137516==    at 0x10B699: tokens_getLength (tokens.c:34)
+==2137516==    by 0x10B74A: tokens_get (tokens.c:63)
+==2137516==    by 0x10B345: respondQuery (querier.c:326)
+==2137516==    by 0x10ABD3: main (querier.c:71)
+==2137516==  Address 0x4c57138 is 0 bytes after a block of size 8 alloc'd
+==2137516==    at 0x4846828: malloc (in /usr/libexec/valgrind/vgpreload_memcheck-amd64-linux.so)
+==2137516==    by 0x10B6C3: tokens_new (tokens.c:46)
+==2137516==    by 0x10B89F: tokens_tokenize (tokens.c:110)
+==2137516==    by 0x10B281: respondQuery (querier.c:304)
+==2137516==    by 0x10ABD3: main (querier.c:71)
+==2137516== 
+==2137516== Invalid read of size 4
+==2137516==    at 0x10B699: tokens_getLength (tokens.c:34)
+==2137516==    by 0x10AF69: processQuery (querier.c:194)
+==2137516==    by 0x10B360: respondQuery (querier.c:329)
+==2137516==    by 0x10ABD3: main (querier.c:71)
+==2137516==  Address 0x4c57138 is 0 bytes after a block of size 8 alloc'd
+==2137516==    at 0x4846828: malloc (in /usr/libexec/valgrind/vgpreload_memcheck-amd64-linux.so)
+==2137516==    by 0x10B6C3: tokens_new (tokens.c:46)
+==2137516==    by 0x10B89F: tokens_tokenize (tokens.c:110)
+==2137516==    by 0x10B281: respondQuery (querier.c:304)
+==2137516==    by 0x10ABD3: main (querier.c:71)
+==2137516== 
+==2137516== Invalid read of size 4
+==2137516==    at 0x10B699: tokens_getLength (tokens.c:34)
+==2137516==    by 0x10B74A: tokens_get (tokens.c:63)
+==2137516==    by 0x10AF9D: processQuery (querier.c:200)
+==2137516==    by 0x10B360: respondQuery (querier.c:329)
+==2137516==    by 0x10ABD3: main (querier.c:71)
+==2137516==  Address 0x4c57138 is 0 bytes after a block of size 8 alloc'd
+==2137516==    at 0x4846828: malloc (in /usr/libexec/valgrind/vgpreload_memcheck-amd64-linux.so)
+==2137516==    by 0x10B6C3: tokens_new (tokens.c:46)
+==2137516==    by 0x10B89F: tokens_tokenize (tokens.c:110)
+==2137516==    by 0x10B281: respondQuery (querier.c:304)
+==2137516==    by 0x10ABD3: main (querier.c:71)
+==2137516== 
+==2137516== Invalid read of size 4
+==2137516==    at 0x10B699: tokens_getLength (tokens.c:34)
+==2137516==    by 0x10B74A: tokens_get (tokens.c:63)
+==2137516==    by 0x10AFE9: processQuery (querier.c:210)
+==2137516==    by 0x10B360: respondQuery (querier.c:329)
+==2137516==    by 0x10ABD3: main (querier.c:71)
+==2137516==  Address 0x4c57138 is 0 bytes after a block of size 8 alloc'd
+==2137516==    at 0x4846828: malloc (in /usr/libexec/valgrind/vgpreload_memcheck-amd64-linux.so)
+==2137516==    by 0x10B6C3: tokens_new (tokens.c:46)
+==2137516==    by 0x10B89F: tokens_tokenize (tokens.c:110)
+==2137516==    by 0x10B281: respondQuery (querier.c:304)
+==2137516==    by 0x10ABD3: main (querier.c:71)
+==2137516== 
+==2137516== Invalid read of size 4
+==2137516==    at 0x10B699: tokens_getLength (tokens.c:34)
+==2137516==    by 0x10BA13: tokens_delete (tokens.c:160)
+==2137516==    by 0x10B419: respondQuery (querier.c:353)
+==2137516==    by 0x10ABD3: main (querier.c:71)
+==2137516==  Address 0x4c57138 is 0 bytes after a block of size 8 alloc'd
+==2137516==    at 0x4846828: malloc (in /usr/libexec/valgrind/vgpreload_memcheck-amd64-linux.so)
+==2137516==    by 0x10B6C3: tokens_new (tokens.c:46)
+==2137516==    by 0x10B89F: tokens_tokenize (tokens.c:110)
+==2137516==    by 0x10B281: respondQuery (querier.c:304)
+==2137516==    by 0x10ABD3: main (querier.c:71)
+==2137516== 
+==2137516== Invalid read of size 4
+==2137516==    at 0x10B699: tokens_getLength (tokens.c:34)
+==2137516==    by 0x10B74A: tokens_get (tokens.c:63)
+==2137516==    by 0x10BA30: tokens_delete (tokens.c:164)
+==2137516==    by 0x10B419: respondQuery (querier.c:353)
+==2137516==    by 0x10ABD3: main (querier.c:71)
+==2137516==  Address 0x4c57138 is 0 bytes after a block of size 8 alloc'd
+==2137516==    at 0x4846828: malloc (in /usr/libexec/valgrind/vgpreload_memcheck-amd64-linux.so)
+==2137516==    by 0x10B6C3: tokens_new (tokens.c:46)
+==2137516==    by 0x10B89F: tokens_tokenize (tokens.c:110)
+==2137516==    by 0x10B281: respondQuery (querier.c:304)
+==2137516==    by 0x10ABD3: main (querier.c:71)
+==2137516== 
+==2137516== Invalid read of size 4
+==2137516==    at 0x10B699: tokens_getLength (tokens.c:34)
+==2137516==    by 0x10B74A: tokens_get (tokens.c:63)
+==2137516==    by 0x10AE96: parseTokens (querier.c:160)
+==2137516==    by 0x10B2AE: respondQuery (querier.c:313)
+==2137516==    by 0x10ABD3: main (querier.c:71)
+==2137516==  Address 0x4c5be78 is 0 bytes after a block of size 8 alloc'd
+==2137516==    at 0x4846828: malloc (in /usr/libexec/valgrind/vgpreload_memcheck-amd64-linux.so)
+==2137516==    by 0x10B6C3: tokens_new (tokens.c:46)
+==2137516==    by 0x10B89F: tokens_tokenize (tokens.c:110)
+==2137516==    by 0x10B281: respondQuery (querier.c:304)
+==2137516==    by 0x10ABD3: main (querier.c:71)
+==2137516== 
+==2137516== Invalid read of size 4
+==2137516==    at 0x10B699: tokens_getLength (tokens.c:34)
+==2137516==    by 0x10B74A: tokens_get (tokens.c:63)
+==2137516==    by 0x10B305: respondQuery (querier.c:323)
+==2137516==    by 0x10ABD3: main (querier.c:71)
+==2137516==  Address 0x4c5be78 is 0 bytes after a block of size 8 alloc'd
+==2137516==    at 0x4846828: malloc (in /usr/libexec/valgrind/vgpreload_memcheck-amd64-linux.so)
+==2137516==    by 0x10B6C3: tokens_new (tokens.c:46)
+==2137516==    by 0x10B89F: tokens_tokenize (tokens.c:110)
+==2137516==    by 0x10B281: respondQuery (querier.c:304)
+==2137516==    by 0x10ABD3: main (querier.c:71)
+==2137516== 
+==2137516== Invalid read of size 4
+==2137516==    at 0x10B699: tokens_getLength (tokens.c:34)
+==2137516==    by 0x10B74A: tokens_get (tokens.c:63)
+==2137516==    by 0x10B01E: processQuery (querier.c:216)
+==2137516==    by 0x10B360: respondQuery (querier.c:329)
+==2137516==    by 0x10ABD3: main (querier.c:71)
+==2137516==  Address 0x4c6ade8 is 0 bytes after a block of size 8 alloc'd
+==2137516==    at 0x4846828: malloc (in /usr/libexec/valgrind/vgpreload_memcheck-amd64-linux.so)
+==2137516==    by 0x10B6C3: tokens_new (tokens.c:46)
+==2137516==    by 0x10B89F: tokens_tokenize (tokens.c:110)
+==2137516==    by 0x10B281: respondQuery (querier.c:304)
+==2137516==    by 0x10ABD3: main (querier.c:71)
+==2137516== 
+==2137516== Invalid read of size 4
+==2137516==    at 0x10B699: tokens_getLength (tokens.c:34)
+==2137516==    by 0x10B74A: tokens_get (tokens.c:63)
+==2137516==    by 0x10B063: processQuery (querier.c:224)
+==2137516==    by 0x10B360: respondQuery (querier.c:329)
+==2137516==    by 0x10ABD3: main (querier.c:71)
+==2137516==  Address 0x4c6ade8 is 0 bytes after a block of size 8 alloc'd
+==2137516==    at 0x4846828: malloc (in /usr/libexec/valgrind/vgpreload_memcheck-amd64-linux.so)
+==2137516==    by 0x10B6C3: tokens_new (tokens.c:46)
+==2137516==    by 0x10B89F: tokens_tokenize (tokens.c:110)
+==2137516==    by 0x10B281: respondQuery (querier.c:304)
+==2137516==    by 0x10ABD3: main (querier.c:71)
+==2137516== 
+==2137516== Invalid read of size 4
+==2137516==    at 0x10B699: tokens_getLength (tokens.c:34)
+==2137516==    by 0x10BA13: tokens_delete (tokens.c:160)
+==2137516==    by 0x10B3C2: respondQuery (querier.c:340)
+==2137516==    by 0x10ABD3: main (querier.c:71)
+==2137516==  Address 0x4c6ade8 is 0 bytes after a block of size 8 alloc'd
+==2137516==    at 0x4846828: malloc (in /usr/libexec/valgrind/vgpreload_memcheck-amd64-linux.so)
+==2137516==    by 0x10B6C3: tokens_new (tokens.c:46)
+==2137516==    by 0x10B89F: tokens_tokenize (tokens.c:110)
+==2137516==    by 0x10B281: respondQuery (querier.c:304)
+==2137516==    by 0x10ABD3: main (querier.c:71)
+==2137516== 
+==2137516== Invalid read of size 4
+==2137516==    at 0x10B699: tokens_getLength (tokens.c:34)
+==2137516==    by 0x10B74A: tokens_get (tokens.c:63)
+==2137516==    by 0x10BA30: tokens_delete (tokens.c:164)
+==2137516==    by 0x10B3C2: respondQuery (querier.c:340)
+==2137516==    by 0x10ABD3: main (querier.c:71)
+==2137516==  Address 0x4c6ade8 is 0 bytes after a block of size 8 alloc'd
+==2137516==    at 0x4846828: malloc (in /usr/libexec/valgrind/vgpreload_memcheck-amd64-linux.so)
+==2137516==    by 0x10B6C3: tokens_new (tokens.c:46)
+==2137516==    by 0x10B89F: tokens_tokenize (tokens.c:110)
+==2137516==    by 0x10B281: respondQuery (querier.c:304)
+==2137516==    by 0x10ABD3: main (querier.c:71)
+==2137516== 
+Query: charlie
+Matches 1 documents (ranked):
+score	1 doc	64: http://cs50tse.cs.dartmouth.edu/tse/toscrape/catalogue/category/books/fiction_10/index.html
+----------------------------------
+Query: cravings or get or congestion
+Matches 5 documents (ranked):
+score	2 doc	9: http://cs50tse.cs.dartmouth.edu/tse/toscrape/catalogue/scott-pilgrims-precious-little-life-scott-pilgrim-1_987/index.html
+score	1 doc	41: http://cs50tse.cs.dartmouth.edu/tse/toscrape/catalogue/category/books/food-and-drink_33/index.html
+score	1 doc	19: http://cs50tse.cs.dartmouth.edu/tse/toscrape/catalogue/sharp-objects_997/index.html
+score	1 doc	27: http://cs50tse.cs.dartmouth.edu/tse/toscrape/catalogue/category/books/health_47/index.html
+score	1 doc	53: http://cs50tse.cs.dartmouth.edu/tse/toscrape/catalogue/category/books/young-adult_21/index.html
+----------------------------------
+Query: freelanced and artemis or haunted and outputting or design nearly
+No documents match.
+----------------------------------
+Query: bridget and testament or mindfulness
+Matches 1 documents (ranked):
+score	1 doc	56: http://cs50tse.cs.dartmouth.edu/tse/toscrape/catalogue/category/books/add-a-comment_18/index.html
+----------------------------------
+Query: doctor and snowflake wake or imagine
+Matches 1 documents (ranked):
+score	2 doc	22: http://cs50tse.cs.dartmouth.edu/tse/toscrape/catalogue/a-light-in-the-attic_1000/index.html
+----------------------------------
+Query: stringy lunarian or rivers and laggards salem
+No documents match.
+----------------------------------
+Query: unreasonable pop
+No documents match.
+----------------------------------
+Query: phantasms butthole or james among
+No documents match.
+----------------------------------
+Query: actual or biography engage deejay watson economic
+Matches 1 documents (ranked):
+score	1 doc	15: http://cs50tse.cs.dartmouth.edu/tse/toscrape/catalogue/the-coming-woman-a-novel-based-on-the-life-of-the-infamous-feminist-victoria-woodhull_993/index.html
+----------------------------------
+Query: hemline and equality
+No documents match.
+----------------------------------
+==2137516== 
+==2137516== HEAP SUMMARY:
+==2137516==     in use at exit: 0 bytes in 0 blocks
+==2137516==   total heap usage: 19,528 allocs, 19,528 frees, 565,269 bytes allocated
+==2137516== 
+==2137516== All heap blocks were freed -- no leaks are possible
+==2137516== 
+==2137516== For lists of detected and suppressed errors, rerun with: -s
+==2137516== ERROR SUMMARY: 357 errors from 18 contexts (suppressed: 0 from 0)
+
+
+## Runs over pageDirectories and indexFilenames produced by all three CS50 websites
+
+# letters at depth 0
+./querier ~/cs50-dev/shared/tse/output/letters-0 ../data/letters-0.index < fuzzquery_files/fq2
+Query: cygnet or this or borodin playground
+Matches 1 documents (ranked):
+score	1 doc	1: http://cs50tse.cs.dartmouth.edu/tse/letters/index.html
+----------------------------------
+Query: this
+Matches 1 documents (ranked):
+score	1 doc	1: http://cs50tse.cs.dartmouth.edu/tse/letters/index.html
+----------------------------------
+Query: tse or hatteras this for tse
+Matches 1 documents (ranked):
+score	1 doc	1: http://cs50tse.cs.dartmouth.edu/tse/letters/index.html
+----------------------------------
+Query: tse
+Matches 1 documents (ranked):
+score	1 doc	1: http://cs50tse.cs.dartmouth.edu/tse/letters/index.html
+----------------------------------
+Query: page and tse or tse home
+Matches 1 documents (ranked):
+score	2 doc	1: http://cs50tse.cs.dartmouth.edu/tse/letters/index.html
+----------------------------------
+Query: the and the this for or sociopaths
+Matches 1 documents (ranked):
+score	1 doc	1: http://cs50tse.cs.dartmouth.edu/tse/letters/index.html
+----------------------------------
+Query: page or home tse or abridgment home or tse
+Matches 1 documents (ranked):
+score	3 doc	1: http://cs50tse.cs.dartmouth.edu/tse/letters/index.html
+----------------------------------
+Query: for for and this or playground playground or this
+Matches 1 documents (ranked):
+score	3 doc	1: http://cs50tse.cs.dartmouth.edu/tse/letters/index.html
+----------------------------------
+Query: the or tse or the bonnier and the
+Matches 1 documents (ranked):
+score	2 doc	1: http://cs50tse.cs.dartmouth.edu/tse/letters/index.html
+----------------------------------
+Query: faucet tse playground or page or page the
+Matches 1 documents (ranked):
+score	2 doc	1: http://cs50tse.cs.dartmouth.edu/tse/letters/index.html
+----------------------------------
+
+# letters at depth 1
+./querier ~/cs50-dev/shared/tse/output/letters-1 ../data/letters-1.index < fuzzquery_files/fq3
+Query: this or the algorithm or page or the tse
+Matches 1 documents (ranked):
+score	3 doc	1: http://cs50tse.cs.dartmouth.edu/tse/letters/index.html
+----------------------------------
+Query: schoolteachers and supposing or quaker
+No documents match.
+----------------------------------
+Query: satisfies and tse algorithm
+No documents match.
+----------------------------------
+Query: belittles or this or algorithm tse or unfurnished or this
+Matches 1 documents (ranked):
+score	2 doc	1: http://cs50tse.cs.dartmouth.edu/tse/letters/index.html
+----------------------------------
+Query: vulcan and tse page
+No documents match.
+----------------------------------
+Query: playground or page home the
+Matches 1 documents (ranked):
+score	2 doc	1: http://cs50tse.cs.dartmouth.edu/tse/letters/index.html
+----------------------------------
+Query: page page
+Matches 1 documents (ranked):
+score	1 doc	1: http://cs50tse.cs.dartmouth.edu/tse/letters/index.html
+----------------------------------
+Query: playground and playground and home
+Matches 1 documents (ranked):
+score	1 doc	1: http://cs50tse.cs.dartmouth.edu/tse/letters/index.html
+----------------------------------
+Query: for for this home
+Matches 1 documents (ranked):
+score	1 doc	1: http://cs50tse.cs.dartmouth.edu/tse/letters/index.html
+----------------------------------
+Query: algorithm or algorithm the
+Matches 1 documents (ranked):
+score	1 doc	2: http://cs50tse.cs.dartmouth.edu/tse/letters/A.html
+----------------------------------
+
+# letters at depth 2
+./querier ~/cs50-dev/shared/tse/output/letters-2 ../data/letters-2.index < fuzzquery_files/fq4
+Query: this or search or algorithm or enchanting
+Matches 3 documents (ranked):
+score	1 doc	1: http://cs50tse.cs.dartmouth.edu/tse/letters/index.html
+score	1 doc	3: http://cs50tse.cs.dartmouth.edu/tse/letters/B.html
+score	1 doc	2: http://cs50tse.cs.dartmouth.edu/tse/letters/A.html
+----------------------------------
+Query: mutilation and page arthritics or tranquillest home page
+No documents match.
+----------------------------------
+Query: batteries tse and breadth holman or this
+Matches 1 documents (ranked):
+score	1 doc	1: http://cs50tse.cs.dartmouth.edu/tse/letters/index.html
+----------------------------------
+Query: playground and search
+No documents match.
+----------------------------------
+Query: algorithm and this home or breadth algorithm
+No documents match.
+----------------------------------
+Query: gaily
+No documents match.
+----------------------------------
+Query: for
+Matches 3 documents (ranked):
+score	1 doc	1: http://cs50tse.cs.dartmouth.edu/tse/letters/index.html
+score	1 doc	2: http://cs50tse.cs.dartmouth.edu/tse/letters/A.html
+score	1 doc	3: http://cs50tse.cs.dartmouth.edu/tse/letters/B.html
+----------------------------------
+Query: home tse page
+Matches 1 documents (ranked):
+score	1 doc	1: http://cs50tse.cs.dartmouth.edu/tse/letters/index.html
+----------------------------------
+Query: algorithm mortgagee playground
+No documents match.
+----------------------------------
+Query: page and breadth or first the or algorithm goods
+No documents match.
+----------------------------------
+
+# letters at depth 3
+./querier ~/cs50-dev/shared/tse/output/letters-3 ../data/letters-3.index < fuzzquery_files/fq5
+Query: romany or this biology
+No documents match.
+----------------------------------
+Query: for home breadth or the or whirligigs
+Matches 2 documents (ranked):
+score	1 doc	3: http://cs50tse.cs.dartmouth.edu/tse/letters/B.html
+score	1 doc	1: http://cs50tse.cs.dartmouth.edu/tse/letters/index.html
+----------------------------------
+Query: page biology wooziest miscommunication
+No documents match.
+----------------------------------
+Query: tse and grads for or for and breadth or clutches
+Matches 1 documents (ranked):
+score	1 doc	3: http://cs50tse.cs.dartmouth.edu/tse/letters/B.html
+----------------------------------
+Query: playground
+Matches 1 documents (ranked):
+score	1 doc	1: http://cs50tse.cs.dartmouth.edu/tse/letters/index.html
+----------------------------------
+Query: search or for the
+Matches 3 documents (ranked):
+score	1 doc	3: http://cs50tse.cs.dartmouth.edu/tse/letters/B.html
+score	1 doc	5: http://cs50tse.cs.dartmouth.edu/tse/letters/D.html
+score	1 doc	1: http://cs50tse.cs.dartmouth.edu/tse/letters/index.html
+----------------------------------
+Query: algorithm search for or biology and deigned first
+No documents match.
+----------------------------------
+Query: mosquito and breadth robe page and for southeasterly
+No documents match.
+----------------------------------
+Query: page page and tambourine and playground and robeson
+No documents match.
+----------------------------------
+Query: depth or this or tse and search tse veneration
+Matches 2 documents (ranked):
+score	1 doc	5: http://cs50tse.cs.dartmouth.edu/tse/letters/D.html
+score	1 doc	1: http://cs50tse.cs.dartmouth.edu/tse/letters/index.html
+----------------------------------
+
+# toscrape at depth 0
+./querier ~/cs50-dev/shared/tse/output/toscrape-0 ../data/toscrape-0.index < fuzzquery_files/fq6
+Query: novels parenting deviled business stopped imprinting
+No documents match.
+----------------------------------
+Query: add our and drudge and next
+No documents match.
+----------------------------------
+Query: firm books academic
+No documents match.
+----------------------------------
+Query: default
+Matches 1 documents (ranked):
+score	1 doc	1: http://cs50tse.cs.dartmouth.edu/tse/toscrape/index.html
+----------------------------------
+Query: plutocratic or music
+Matches 1 documents (ranked):
+score	1 doc	1: http://cs50tse.cs.dartmouth.edu/tse/toscrape/index.html
+----------------------------------
+Query: aggression or precious little
+Matches 1 documents (ranked):
+score	1 doc	1: http://cs50tse.cs.dartmouth.edu/tse/toscrape/index.html
+----------------------------------
+Query: reverting
+No documents match.
+----------------------------------
+Query: academic mystery or set or irks requiem
+Matches 1 documents (ranked):
+score	2 doc	1: http://cs50tse.cs.dartmouth.edu/tse/toscrape/index.html
+----------------------------------
+Query: counterpoint
+No documents match.
+----------------------------------
+Query: religion sapiens
+Matches 1 documents (ranked):
+score	1 doc	1: http://cs50tse.cs.dartmouth.edu/tse/toscrape/index.html
+----------------------------------
+
+# toscrape at depth 1
+./querier ~/cs50-dev/shared/tse/output/toscrape-1 ../data/toscrape-1.index < fuzzquery_files/fq7
+Query: rush and inhabits
+No documents match.
+----------------------------------
+Query: lux seekers sans or elector
+No documents match.
+----------------------------------
+Query: theodore and mollusks connection
+No documents match.
+----------------------------------
+Query: hankers science or known and pretty and belief
+No documents match.
+----------------------------------
+Query: sense gathered or exiles orderly bleariest determination
+No documents match.
+----------------------------------
+Query: terrain created
+No documents match.
+----------------------------------
+Query: mill enshrouded
+No documents match.
+----------------------------------
+Query: mooed and sloping and jerome or piteous
+No documents match.
+----------------------------------
+Query: tea or volume or too
+Matches 7 documents (ranked):
+score	4 doc	69: http://cs50tse.cs.dartmouth.edu/tse/toscrape/catalogue/category/books/sequential-art_5/index.html
+score	1 doc	4: http://cs50tse.cs.dartmouth.edu/tse/toscrape/catalogue/libertarianism-for-beginners_982/index.html
+score	1 doc	9: http://cs50tse.cs.dartmouth.edu/tse/toscrape/catalogue/scott-pilgrims-precious-little-life-scott-pilgrim-1_987/index.html
+score	1 doc	55: http://cs50tse.cs.dartmouth.edu/tse/toscrape/catalogue/category/books/fantasy_19/index.html
+score	1 doc	15: http://cs50tse.cs.dartmouth.edu/tse/toscrape/catalogue/the-coming-woman-a-novel-based-on-the-life-of-the-infamous-feminist-victoria-woodhull_993/index.html
+score	1 doc	19: http://cs50tse.cs.dartmouth.edu/tse/toscrape/catalogue/sharp-objects_997/index.html
+score	1 doc	22: http://cs50tse.cs.dartmouth.edu/tse/toscrape/catalogue/a-light-in-the-attic_1000/index.html
+----------------------------------
+Query: verse
+Matches 1 documents (ranked):
+score	2 doc	22: http://cs50tse.cs.dartmouth.edu/tse/toscrape/catalogue/a-light-in-the-attic_1000/index.html
+----------------------------------
+
+# toscrape at depth 2
+./querier ~/cs50-dev/shared/tse/output/toscrape-2 ../data/toscrape-2.index < fuzzquery_files/fq8
+Query: represent wresting
+No documents match.
+----------------------------------
+Query: quest or hostilities corporations examination or burgeoning
+Matches 23 documents (ranked):
+score	5 doc	36: http://cs50tse.cs.dartmouth.edu/tse/toscrape/catalogue/the-boys-in-the-boat-nine-americans-and-their-epic-quest-for-gold-at-the-1936-berlin-olympics_992/index.html
+score	4 doc	364: http://cs50tse.cs.dartmouth.edu/tse/toscrape/catalogue/old-records-never-die-one-mans-quest-for-his-vinyl-and-his-past_39/index.html
+score	3 doc	244: http://cs50tse.cs.dartmouth.edu/tse/toscrape/catalogue/the-elegant-universe-superstrings-hidden-dimensions-and-the-quest-for-the-ultimate-theory_245/index.html
+score	3 doc	396: http://cs50tse.cs.dartmouth.edu/tse/toscrape/catalogue/a-history-of-god-the-4000-year-quest-of-judaism-christianity-and-islam_310/index.html
+score	2 doc	202: http://cs50tse.cs.dartmouth.edu/tse/toscrape/catalogue/approval-junkie-adventures-in-caring-too-much_363/index.html
+score	2 doc	268: http://cs50tse.cs.dartmouth.edu/tse/toscrape/catalogue/nightingale-sing_823/index.html
+score	2 doc	390: http://cs50tse.cs.dartmouth.edu/tse/toscrape/catalogue/unseen-city-the-majesty-of-pigeons-the-discreet-charm-of-snails-other-wonders-of-the-urban-wilderness_952/index.html
+score	2 doc	420: http://cs50tse.cs.dartmouth.edu/tse/toscrape/catalogue/the-secret-of-dreadwillow-carse_944/index.html
+score	2 doc	426: http://cs50tse.cs.dartmouth.edu/tse/toscrape/catalogue/my-mrs-brown_719/index.html
+score	2 doc	520: http://cs50tse.cs.dartmouth.edu/tse/toscrape/catalogue/lumberjanes-vol-1-beware-the-kitten-holy-lumberjanes-1-4_906/index.html
+score	2 doc	542: http://cs50tse.cs.dartmouth.edu/tse/toscrape/catalogue/the-invention-of-wings_448/index.html
+score	2 doc	557: http://cs50tse.cs.dartmouth.edu/tse/toscrape/catalogue/what-happened-on-beale-street-secrets-of-the-south-mysteries-2_506/index.html
+score	1 doc	153: http://cs50tse.cs.dartmouth.edu/tse/toscrape/catalogue/a-short-history-of-nearly-everything_457/index.html
+score	1 doc	208: http://cs50tse.cs.dartmouth.edu/tse/toscrape/catalogue/civilization-and-its-discontents_140/index.html
+score	1 doc	228: http://cs50tse.cs.dartmouth.edu/tse/toscrape/catalogue/the-collected-poems-of-wb-yeats-the-collected-works-of-wb-yeats-1_441/index.html
+score	1 doc	248: http://cs50tse.cs.dartmouth.edu/tse/toscrape/catalogue/diary-of-a-citizen-scientist-chasing-tiger-beetles-and-other-new-ways-of-engaging-the-world_517/index.html
+score	1 doc	253: http://cs50tse.cs.dartmouth.edu/tse/toscrape/catalogue/the-most-perfect-thing-inside-and-outside-a-birds-egg_938/index.html
+score	1 doc	286: http://cs50tse.cs.dartmouth.edu/tse/toscrape/catalogue/searching-for-meaning-in-gailana_648/index.html
+score	1 doc	318: http://cs50tse.cs.dartmouth.edu/tse/toscrape/catalogue/modern-romance_820/index.html
+score	1 doc	370: http://cs50tse.cs.dartmouth.edu/tse/toscrape/catalogue/kill-em-and-leave-searching-for-james-brown-and-the-american-soul_528/index.html
+score	1 doc	443: http://cs50tse.cs.dartmouth.edu/tse/toscrape/catalogue/bridget-joness-diary-bridget-jones-1_10/index.html
+score	1 doc	545: http://cs50tse.cs.dartmouth.edu/tse/toscrape/catalogue/a-paris-apartment_612/index.html
+score	1 doc	572: http://cs50tse.cs.dartmouth.edu/tse/toscrape/catalogue/the-past-never-ends_942/index.html
+----------------------------------
+Query: khartoum and bark and wheeziest tops or adulthood humanistic
+No documents match.
+----------------------------------
+Query: costing vanquish or friend and prospers stroganoff
+No documents match.
+----------------------------------
+Query: conspire and entr and integration peephole
+No documents match.
+----------------------------------
+Query: lifelong
+Matches 5 documents (ranked):
+score	2 doc	170: http://cs50tse.cs.dartmouth.edu/tse/toscrape/catalogue/needful-things_334/index.html
+score	2 doc	202: http://cs50tse.cs.dartmouth.edu/tse/toscrape/catalogue/approval-junkie-adventures-in-caring-too-much_363/index.html
+score	2 doc	446: http://cs50tse.cs.dartmouth.edu/tse/toscrape/catalogue/something-blue-darcy-rachel-2_223/index.html
+score	1 doc	108: http://cs50tse.cs.dartmouth.edu/tse/toscrape/catalogue/rich-dad-poor-dad_483/index.html
+score	1 doc	448: http://cs50tse.cs.dartmouth.edu/tse/toscrape/catalogue/the-devil-wears-prada-the-devil-wears-prada-1_243/index.html
+----------------------------------
+Query: assume and tara tabloid
+No documents match.
+----------------------------------
+Query: linked punished
+No documents match.
+----------------------------------
+Query: companion
+Matches 8 documents (ranked):
+score	3 doc	403: http://cs50tse.cs.dartmouth.edu/tse/toscrape/catalogue/the-day-the-crayons-came-home-crayons_241/index.html
+score	2 doc	257: http://cs50tse.cs.dartmouth.edu/tse/toscrape/catalogue/the-epidemic-the-program-06_636/index.html
+score	2 doc	352: http://cs50tse.cs.dartmouth.edu/tse/toscrape/catalogue/the-kite-runner_847/index.html
+score	2 doc	419: http://cs50tse.cs.dartmouth.edu/tse/toscrape/catalogue/the-white-cat-and-the-monk-a-retelling-of-the-poem-pangur-ban_865/index.html
+score	1 doc	140: http://cs50tse.cs.dartmouth.edu/tse/toscrape/catalogue/the-nerdy-nummies-cookbook-sweet-treats-for-the-geek-in-all-of-us_853/index.html
+score	1 doc	164: http://cs50tse.cs.dartmouth.edu/tse/toscrape/catalogue/house-of-leaves_169/index.html
+score	1 doc	184: http://cs50tse.cs.dartmouth.edu/tse/toscrape/catalogue/naked_197/index.html
+score	1 doc	297: http://cs50tse.cs.dartmouth.edu/tse/toscrape/catalogue/avatar-the-last-airbender-smoke-and-shadow-part-3-smoke-and-shadow-3_881/index.html
+----------------------------------
+Query: initiated nike peppercorn or kno lenoir
+No documents match.
+----------------------------------
+
+# toscrape at depth 3
+./querier ~/cs50-dev/shared/tse/output/toscrape-3 ../data/toscrape-3.index < fuzzquery_files/fq9
+Query: experiences redemption
+No documents match.
+----------------------------------
+Query: smell repeating and stimulating amnesty and trains
+No documents match.
+----------------------------------
+Query: crossing magnetic or upstarts or dynamite
+Matches 1 documents (ranked):
+score	1 doc	530: http://cs50tse.cs.dartmouth.edu/tse/toscrape/catalogue/hamilton-the-revolution_699/index.html
+----------------------------------
+Query: locke or television and proved
+Matches 2 documents (ranked):
+score	1 doc	118: http://cs50tse.cs.dartmouth.edu/tse/toscrape/catalogue/libertarianism-for-beginners_982/index.html
+score	1 doc	249: http://cs50tse.cs.dartmouth.edu/tse/toscrape/catalogue/the-age-of-genius-the-seventeenth-century-and-the-birth-of-the-modern-mind_929/index.html
+----------------------------------
+Query: sara
+Matches 3 documents (ranked):
+score	7 doc	732: http://cs50tse.cs.dartmouth.edu/tse/toscrape/catalogue/the-last-painting-of-sara-de-vos_259/index.html
+score	2 doc	117: http://cs50tse.cs.dartmouth.edu/tse/toscrape/catalogue/its-only-the-himalayas_981/index.html
+score	1 doc	268: http://cs50tse.cs.dartmouth.edu/tse/toscrape/catalogue/security_925/index.html
+----------------------------------
+Query: royalty
+Matches 2 documents (ranked):
+score	2 doc	88: http://cs50tse.cs.dartmouth.edu/tse/toscrape/catalogue/orchestra-of-exiles-the-story-of-bronislaw-huberman-the-israel-philharmonic-and-the-one-thousand-jews-he-saved-from-nazi-horrors_337/index.html
+score	1 doc	449: http://cs50tse.cs.dartmouth.edu/tse/toscrape/catalogue/the-white-queen-the-cousins-war-1_768/index.html
+----------------------------------
+Query: kaitlyn autopsy and nobel umped responses poison
+No documents match.
+----------------------------------
+Query: policymakers and dfb vengeful seeing
+No documents match.
+----------------------------------
+Query: rampion
+Matches 1 documents (ranked):
+score	1 doc	318: http://cs50tse.cs.dartmouth.edu/tse/toscrape/catalogue/stars-above-the-lunar-chronicles-45_632/index.html
+----------------------------------
+Query: instagram or tamar penis
+Matches 4 documents (ranked):
+score	3 doc	310: http://cs50tse.cs.dartmouth.edu/tse/toscrape/catalogue/quarter-life-poetry-poems-for-the-young-broke-and-hangry_727/index.html
+score	2 doc	220: http://cs50tse.cs.dartmouth.edu/tse/toscrape/catalogue/cravings-recipes-for-what-you-want-to-eat_589/index.html
+score	2 doc	639: http://cs50tse.cs.dartmouth.edu/tse/toscrape/catalogue/i-had-a-nice-time-and-other-lies-how-to-find-love-sht-like-that_814/index.html
+score	1 doc	201: http://cs50tse.cs.dartmouth.edu/tse/toscrape/catalogue/the-third-wave-an-entrepreneurs-vision-of-the-future_862/index.html
+----------------------------------
+
+# wikipedia at depth 0
+./querier ~/cs50-dev/shared/tse/output/wikipedia-0 ../data/wikipedia-0.index < fuzzquery_files/fq10
+Query: roche or browser or xavier
+Matches 1 documents (ranked):
+score	3 doc	1: http://cs50tse.cs.dartmouth.edu/tse/wikipedia
+----------------------------------
+Query: the resuscitating or design wikipedia
+Matches 1 documents (ranked):
+score	1 doc	1: http://cs50tse.cs.dartmouth.edu/tse/wikipedia
+----------------------------------
+Query: httrack and design or hash and chaffed uncommonly
+Matches 1 documents (ranked):
+score	1 doc	1: http://cs50tse.cs.dartmouth.edu/tse/wikipedia
+----------------------------------
+Query: open
+Matches 1 documents (ranked):
+score	1 doc	1: http://cs50tse.cs.dartmouth.edu/tse/wikipedia
+----------------------------------
+Query: website or science or computer or contributors
+Matches 1 documents (ranked):
+score	6 doc	1: http://cs50tse.cs.dartmouth.edu/tse/wikipedia
+----------------------------------
+Query: list and ani unix
+No documents match.
+----------------------------------
+Query: denuded or index
+Matches 1 documents (ranked):
+score	3 doc	1: http://cs50tse.cs.dartmouth.edu/tse/wikipedia
+----------------------------------
+Query: website roche and linked and sites and made and unix
+Matches 1 documents (ranked):
+score	1 doc	1: http://cs50tse.cs.dartmouth.edu/tse/wikipedia
+----------------------------------
+Query: roche or other other and made or programming or negotiating
+Matches 1 documents (ranked):
+score	3 doc	1: http://cs50tse.cs.dartmouth.edu/tse/wikipedia
+----------------------------------
+Query: intermission
+No documents match.
+----------------------------------
+
+# wikipedia at depth 1
+./querier ~/cs50-dev/shared/tse/output/wikipedia-1 ../data/wikipedia-1.index < fuzzquery_files/fq11
+Query: billion train
+Matches 1 documents (ranked):
+score	1 doc	4: http://cs50tse.cs.dartmouth.edu/tse/wikipedia/Dartmouth_College.html
+----------------------------------
+Query: distributive or operating nedersaksies and tested or lampoon
+Matches 1 documents (ranked):
+score	2 doc	4: http://cs50tse.cs.dartmouth.edu/tse/wikipedia/Dartmouth_College.html
+----------------------------------
+Query: veasey and older doubleday exam or wikitext
+Matches 6 documents (ranked):
+score	1 doc	2: http://cs50tse.cs.dartmouth.edu/tse/wikipedia/Linked_list.html
+score	1 doc	3: http://cs50tse.cs.dartmouth.edu/tse/wikipedia/Hash_table.html
+score	1 doc	4: http://cs50tse.cs.dartmouth.edu/tse/wikipedia/Dartmouth_College.html
+score	1 doc	5: http://cs50tse.cs.dartmouth.edu/tse/wikipedia/Unix.html
+score	1 doc	6: http://cs50tse.cs.dartmouth.edu/tse/wikipedia/C_(programming_language).html
+score	1 doc	7: http://cs50tse.cs.dartmouth.edu/tse/wikipedia/Computer_science.html
+----------------------------------
+Query: unlike stephen or sucked or charmer imposed
+Matches 2 documents (ranked):
+score	1 doc	4: http://cs50tse.cs.dartmouth.edu/tse/wikipedia/Dartmouth_College.html
+score	1 doc	6: http://cs50tse.cs.dartmouth.edu/tse/wikipedia/C_(programming_language).html
+----------------------------------
+Query: santa carousing and abroad its
+No documents match.
+----------------------------------
+Query: freebsd or rob or collectivizes
+Matches 2 documents (ranked):
+score	6 doc	5: http://cs50tse.cs.dartmouth.edu/tse/wikipedia/Unix.html
+score	1 doc	4: http://cs50tse.cs.dartmouth.edu/tse/wikipedia/Dartmouth_College.html
+----------------------------------
+Query: artseditor and secret or cons vacuum
+No documents match.
+----------------------------------
+Query: fields or attacks or iterate goals
+Matches 4 documents (ranked):
+score	14 doc	2: http://cs50tse.cs.dartmouth.edu/tse/wikipedia/Linked_list.html
+score	14 doc	7: http://cs50tse.cs.dartmouth.edu/tse/wikipedia/Computer_science.html
+score	2 doc	4: http://cs50tse.cs.dartmouth.edu/tse/wikipedia/Dartmouth_College.html
+score	2 doc	3: http://cs50tse.cs.dartmouth.edu/tse/wikipedia/Hash_table.html
+----------------------------------
+Query: univ and wgisarticle or shows and nola continued or paper
+Matches 4 documents (ranked):
+score	1 doc	4: http://cs50tse.cs.dartmouth.edu/tse/wikipedia/Dartmouth_College.html
+score	1 doc	7: http://cs50tse.cs.dartmouth.edu/tse/wikipedia/Computer_science.html
+score	1 doc	2: http://cs50tse.cs.dartmouth.edu/tse/wikipedia/Linked_list.html
+score	1 doc	5: http://cs50tse.cs.dartmouth.edu/tse/wikipedia/Unix.html
+----------------------------------
+Query: automating coherent gluing
+No documents match.
+----------------------------------
