@@ -81,3 +81,27 @@ bool pagedir_validate(const char* pageDirectory);
  *  docID should be an integer of less than 6 digits; else, it gets cut off at the 5-digit mark, leading to unexpected behavior
  */
 webpage_t* pagedir_load(const char* pageDirectory, const int docID);
+
+/**************** pagedir_open ****************/
+/* Opens a file identified by docID in pageDirectory in a given mode
+ *
+ * Caller provides:
+ *  pageDirectory string pathname of directory where this page file is located
+ *  docID         the unique document ID of the page that identifies its page file
+ *  mode          mode in which this file should be opened
+ *
+ * We return:
+ *  file pointer of page file
+ *
+ * We assume:
+ *  all files in pageDirectory are crawler-produced
+ *
+ * IMPORTANT:
+ *  program crashes cleanly if:
+ *    pageDirectory is NULL
+ *    file containing page information cannot be opened in given mode
+ * 
+ * Limitations:
+ *  docID should be an integer of less than 6 digits; else, it gets cut off at the 5-digit mark, leading to unexpected behavior
+ */
+FILE* pagedir_open(const char* pageDirectory, const int docID, char* mode);

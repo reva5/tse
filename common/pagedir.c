@@ -13,11 +13,6 @@
 #include "../libcs50/file.h"
 
 /* *********************************************************************** */
-/* Private function prototypes */
-
-static FILE* openPageFile(const char* pageDirectory, const int docID, char* mode);
-
-/* *********************************************************************** */
 /* Public methods */
 
 /**************** pagedir_init ****************/
@@ -52,7 +47,7 @@ void pagedir_save(const webpage_t* page, const char* pageDirectory, const int do
     exit(1);
   }
 
-  FILE* pageFile = openPageFile(pageDirectory, docID, "w");
+  FILE* pageFile = pagedir_open(pageDirectory, docID, "w");
   fprintf(pageFile, "%s\n%d\n%s", webpage_getURL(page), webpage_getDepth(page), webpage_getHTML(page));
   fclose(pageFile);
 }
@@ -99,7 +94,7 @@ webpage_t* pagedir_load(const char* pageDirectory, const int docID)
   }
 
   // Open page file
-  FILE* pageFile = openPageFile(pageDirectory, docID, "r");
+  FILE* pageFile = pagedir_open(pageDirectory, docID, "r");
 
   // Read lines of page file and assign them to their corresponding variables
   char* URL = file_readLine(pageFile);
@@ -117,15 +112,9 @@ webpage_t* pagedir_load(const char* pageDirectory, const int docID)
   return webpage_new(URL, depth, HTML);
 }
 
-/***********************************************************************
- * INTERNAL FUNCTIONS
- ***********************************************************************/
-
-/**************** openPageFile ****************/
-/* return a file pointer to a page file referenced by its document ID 
- * limitations: docID must have <= 5 digits
- */
-static FILE* openPageFile(const char* pageDirectory, const int docID, char* mode)
+/**************** pagedir_open ****************/
+/* see pagedir.h for documentation */
+FILE* pagedir_open(const char* pageDirectory, const int docID, char* mode)
 {
   if (pageDirectory == NULL) {
     fprintf(stderr, "pageDirectory string is NULL\n");
