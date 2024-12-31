@@ -100,6 +100,10 @@ tokens_t* tokens_tokenize(char* query)
       c = query[++i];
     }
     wordCount++;
+
+    if (c == '\0') {
+      break;
+    }
   }
 
   if (wordCount == 0) {
@@ -144,6 +148,10 @@ tokens_t* tokens_tokenize(char* query)
     tokens_set(tokens, tokensPosition, token);
 
     tokensPosition++;
+
+    if (c == '\0') {
+      break;
+    }
   }
 
   return tokens;
